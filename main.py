@@ -112,23 +112,32 @@ def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument(f'--proxy-server=https://{proxy_host}:{proxy_port}')
     
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--remote-debugging-port=9222')
-    chrome_options.add_argument('--window-size=1920x1080')
+    # Headless mode options
+    chrome_options.add_argument('--head')
+    chrome_options.add_argument('--disable-gpu')  # Disable GPU hardware acceleration
+    chrome_options.add_argument('--no-sandbox')    # Bypass OS security model
+    chrome_options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
+    chrome_options.add_argument('--remote-debugging-port=9222')  # Debugging port
+    chrome_options.add_argument('--window-size=1920x1080')  # Set the window size
 
+    # Enable logging
+    chrome_options.add_argument('--enable-logging')
+    chrome_options.add_argument('--v=1')  # Set log level to INFO
 
+    # If using a proxy authentication extension
     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
     chrome_options.add_extension(plugin_path)
 
-    chrome_driver_path = './chromedriver'
+    # Ensure you provide the correct path to the ChromeDriver executable
+    chrome_driver_path = './chromedriver'  # Update this path if necessary
     service = Service(chrome_driver_path)
-    
-    browser = webdriver.Chrome(service=service, options=chrome_options)
-    
-    return browser
+
+    try:
+        browser = webdriver.Chrome(service=service, options=chrome_options)
+        return browser
+    except Exception as e:
+        print(f"Failed to start Chrome with error: {e}")
+        return None
 
 
 def scroll_page_smoothly(browser, direction='down', pause_time=2):
