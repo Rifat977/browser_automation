@@ -111,10 +111,13 @@ def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass, 
 def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument(f'--proxy-server=https://{proxy_host}:{proxy_port}')
-    chrome_options.add_argument('--head')
-    chrome_options.add_argument('--disable-gpu')  # For systems that require this flag in headless mode
-    chrome_options.add_argument('--no-sandbox')   # Recommended for running as root
+    
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--remote-debugging-port=9222')
+    chrome_options.add_argument('--window-size=1920x1080')
 
 
     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
