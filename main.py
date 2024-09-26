@@ -10,7 +10,8 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from collections import deque
 import undetected_chromedriver as uc
-
+import threading
+import queue
 
 def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass, scheme='http', plugin_path='proxy_auth_plugin.zip'):
     manifest_json = """
@@ -91,18 +92,32 @@ def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass, 
     
 #     return browser
 
+# def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
+#     # Initialize Chrome options
+#     chrome_options = uc.ChromeOptions()
+#     chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
+    
+#     # Create and add proxy auth extension
+#     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
+#     if plugin_path:
+#         chrome_options.add_extension(plugin_path)
+
+#     # Initialize undetected Chrome with the specified options
+#     service = Service(ChromeDriverManager().install())
+#     browser = uc.Chrome(service=service, options=chrome_options)
+    
+#     return browser
+
 def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
-    chrome_options = uc.ChromeOptions()
-    chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument(f'--proxy-server=https://{proxy_host}:{proxy_port}')
 
     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
     chrome_options.add_extension(plugin_path)
 
-    # Set the custom path to ChromeDriver
     chrome_driver_path = '/home/rifat/.wdm/drivers/chromedriver/linux64/127.0.6533.119/chromedriver-linux64/chromedriver'
     service = Service(chrome_driver_path)
     
-    # Create the browser instance using the custom ChromeDriver path
     browser = webdriver.Chrome(service=service, options=chrome_options)
     
     return browser
@@ -150,70 +165,6 @@ def scroll_page(browser):
     scroll_page_smoothly(browser, direction='up', pause_time=1)
 
 
-
-def fetch_all_urls(browser):
-    urls = set()
-    elements = browser.find_elements(By.TAG_NAME, 'a')
-    for element in elements:
-        href = element.get_attribute('href')
-        if href:
-            parsed_url = urlparse(href)
-            clean_url = parsed_url._replace(fragment='').geturl()
-            urls.add(clean_url)
-    return urls
-
-
-def fetch_ip_using_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
-    browser = get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass)
-    
-    try:
-        site_url = "https://dailycombotoday.com"
-        browser.get(site_url)
-        time.sleep(1)
-        scroll_page(browser)
-        
-        site_domain = urlparse(site_url).netloc
-        visited_paths = set() 
-        urls_to_visit = deque()  
-        
-        initial_urls = fetch_all_urls(browser)
-        
-        urls_to_visit.extend(url for url in initial_urls if urlparse(url).netloc == site_domain)
-        
-        while urls_to_visit and len(visited_paths) < 3:
-            url = urls_to_visit.popleft()
-            path = urlparse(url).path
-            
-            if path in visited_paths:
-                continue 
-            
-            visited_paths.add(path)  
-            
-            print(url)
-            
-            # Open the URL in a new tab
-            browser.execute_script("window.open('');")
-            browser.switch_to.window(browser.window_handles[-1])
-            browser.get(url)
-            time.sleep(1)
-            scroll_page(browser)
-            
-            new_urls = fetch_all_urls(browser)
-            new_paths = {urlparse(url).path for url in new_urls if urlparse(url).netloc == site_domain}
-            new_paths -= visited_paths
-            
-            urls_to_visit.extend(urljoin(site_url, path) for path in new_paths)
-            
-            # Close the tab and switch back to the original tab
-            # browser.close()
-            # browser.switch_to.window(browser.window_handles[0])
-        
-        all_urls = list(visited_paths)
-    finally:
-        browser.quit()
-    
-    return all_urls
-
 def parse_proxy_string(proxy_string):
     proxy_parts = proxy_string.split(':')
     proxy_host = proxy_parts[0]
@@ -222,17 +173,66 @@ def parse_proxy_string(proxy_string):
     proxy_pass = proxy_parts[3]
     return proxy_host, proxy_port, proxy_user, proxy_pass
 
-proxy_strings = [
-"gw.dataimpulse.com:10000:ee9f710b8d0307f3ce1a__cr.us:6509bead40a27cc8",
-]
+def fetch_ip_using_proxy(proxy_host, proxy_port, proxy_user, proxy_pass, browser_id, lock, closed_browsers):
+    browser = get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass)
 
-for proxy_string in proxy_strings:
-    proxy_host, proxy_port, proxy_user, proxy_pass = parse_proxy_string(proxy_string)
-    print(f"Using proxy {proxy_host}:{proxy_port}")
-    ip_content = fetch_ip_using_proxy(
-        proxy_host=proxy_host,
-        proxy_port=proxy_port,
-        proxy_user=proxy_user,
-        proxy_pass=proxy_pass
-    )
-    print(ip_content)
+    with open("data/links.txt", "r") as file:
+        site_urls = file.readlines()
+    
+    completed_count = 0
+    
+    try:
+        first_url = "https://whatismyip.com"
+        browser.get(first_url)
+        
+        for url in site_urls:
+            browser.execute_script("window.open('');")
+            browser.switch_to.window(browser.window_handles[-1])
+            browser.get(url.strip())
+            time.sleep(1)
+            scroll_page(browser)
+            completed_count += 1
+            print(f"Browser {browser_id}: Completed {completed_count}/{len(site_urls)} - {url.strip()}")
+            
+    finally:
+        browser.quit()
+        with lock:
+            closed_browsers.append(browser_id)
+            print(f"Browser {browser_id} closed. Total closed: {len(closed_browsers)}")
+
+
+def run_browsers_with_proxies(proxy_list, num_browsers):
+    threads = []
+    lock = threading.Lock()
+    closed_browsers = []
+    
+    proxy_batches = [proxy_list[i:i+num_browsers] for i in range(0, len(proxy_list), num_browsers)]
+    
+    for batch_num, proxy_batch in enumerate(proxy_batches, start=1):
+        print(f"Starting batch {batch_num} with {len(proxy_batch)} proxies")
+
+        for i, proxy_string in enumerate(proxy_batch):
+            proxy_string = proxy_string.strip()
+            proxy_host, proxy_port, proxy_user, proxy_pass = parse_proxy_string(proxy_string)
+
+            thread = threading.Thread(target=fetch_ip_using_proxy, 
+                                      args=(proxy_host, proxy_port, proxy_user, proxy_pass, i + 1 + (batch_num - 1) * num_browsers, lock, closed_browsers))
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads in the batch to complete
+        for thread in threads:
+            thread.join()
+
+        print(f"Batch {batch_num} completed.")
+
+    print(f"All browsers using {len(proxy_list)} proxies completed.")
+
+
+# Main execution
+with open("data/proxy.txt", "r") as file:
+    proxy_strings = file.readlines()
+
+num_browsers_to_run = int(input("How many browsers do you want to open at the same time: "))
+
+run_browsers_with_proxies(proxy_strings, num_browsers_to_run)
