@@ -80,17 +80,17 @@ def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass, 
 
     return plugin_path
 
-def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
+# def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
+#     chrome_options = webdriver.ChromeOptions()
+#     chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
 
-    plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
-    chrome_options.add_extension(plugin_path)
+#     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
+#     chrome_options.add_extension(plugin_path)
 
-    service = Service(ChromeDriverManager().install())
-    browser = webdriver.Chrome(service=service, options=chrome_options)
+#     service = Service(ChromeDriverManager().install())
+#     browser = webdriver.Chrome(service=service, options=chrome_options)
     
-    return browser
+#     return browser
 
 # def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
 #     # Initialize Chrome options
@@ -108,27 +108,27 @@ def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
     
 #     return browser
 
-# def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
-#     chrome_options = webdriver.ChromeOptions()
-#     chrome_options.add_argument(f'--proxy-server=https://{proxy_host}:{proxy_port}')
-
-#     chrome_options.add_argument('--headless')
-#     chrome_options.add_argument('--disable-gpu')
-#     chrome_options.add_argument('--no-sandbox')
-#     chrome_options.add_argument('--disable-dev-shm-usage')
-#     chrome_options.add_argument('--remote-debugging-port=9222')
-#     chrome_options.add_argument('--window-size=1920x1080')
-
-
-#     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
-#     chrome_options.add_extension(plugin_path)
-
-#     chrome_driver_path = './chromedriver'
-#     service = Service(chrome_driver_path)
+def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument(f'--proxy-server=https://{proxy_host}:{proxy_port}')
     
-#     browser = webdriver.Chrome(service=service, options=chrome_options)
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--remote-debugging-port=9222')
+    chrome_options.add_argument('--window-size=1920x1080')
+
+
+    plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
+    chrome_options.add_extension(plugin_path)
+
+    chrome_driver_path = './chromedriver'
+    service = Service(chrome_driver_path)
     
-#     return browser
+    browser = webdriver.Chrome(service=service, options=chrome_options)
+    
+    return browser
 
 
 def scroll_page_smoothly(browser, direction='down', pause_time=2):
