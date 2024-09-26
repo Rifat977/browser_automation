@@ -73,6 +73,18 @@ def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass, 
 
     return plugin_path
 
+# def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
+#     chrome_options = webdriver.ChromeOptions()
+#     chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
+
+#     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
+#     chrome_options.add_extension(plugin_path)
+
+#     service = Service(ChromeDriverManager().install())
+#     browser = webdriver.Chrome(service=service, options=chrome_options)
+    
+#     return browser
+
 def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
@@ -80,10 +92,15 @@ def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
     chrome_options.add_extension(plugin_path)
 
-    service = Service(ChromeDriverManager().install())
+    # Set the custom path to ChromeDriver
+    chrome_driver_path = '/home/rifat/.wdm/drivers/chromedriver/linux64/127.0.6533.119/chromedriver-linux64/chromedriver'
+    service = Service(chrome_driver_path)
+    
+    # Create the browser instance using the custom ChromeDriver path
     browser = webdriver.Chrome(service=service, options=chrome_options)
     
     return browser
+
 
 def fetch_ip_using_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
     browser = get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass)

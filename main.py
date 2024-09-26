@@ -9,6 +9,7 @@ import string, time
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from collections import deque
+import undetected_chromedriver as uc
 
 
 def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass, scheme='http', plugin_path='proxy_auth_plugin.zip'):
@@ -78,69 +79,76 @@ def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass, 
 
     return plugin_path
 
+# def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
+#     chrome_options = webdriver.ChromeOptions()
+#     chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
+
+#     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
+#     chrome_options.add_extension(plugin_path)
+
+#     service = Service(ChromeDriverManager().install())
+#     browser = webdriver.Chrome(service=service, options=chrome_options)
+    
+#     return browser
+
 def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
-    chrome_options = webdriver.ChromeOptions()
+    chrome_options = uc.ChromeOptions()
     chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
 
     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
     chrome_options.add_extension(plugin_path)
 
-    service = Service(ChromeDriverManager().install())
+    # Set the custom path to ChromeDriver
+    chrome_driver_path = '/home/rifat/.wdm/drivers/chromedriver/linux64/127.0.6533.119/chromedriver-linux64/chromedriver'
+    service = Service(chrome_driver_path)
+    
+    # Create the browser instance using the custom ChromeDriver path
     browser = webdriver.Chrome(service=service, options=chrome_options)
     
     return browser
 
 
-def scroll_page_smoothly(browser, direction='down', stay_time=10):
+def scroll_page_smoothly(browser, direction='down', pause_time=2):
     scroll_script = f"""
-    var distance = 50;  // Distance to scroll in each step
-    var delay = 100;  // Delay in milliseconds between each scroll step
-    var totalTime = {stay_time * 1000};  // Total time to stay on the page in milliseconds
-    var elapsedTime = 0;  // Track the elapsed time
+    var distance = window.innerHeight / 4;  // Distance to scroll in each step (half the viewport height)
+    var delay = 50;  // Delay in milliseconds between each scroll step
+    var pauseTime = {pause_time * 550};  // Pause time in milliseconds after each section scroll
+    var totalHeight = document.body.scrollHeight;
+    var sections = Math.ceil(totalHeight / distance);  // Number of sections to scroll
+    var totalTime = sections * pauseTime;  // Total time to stay on the page
 
-    function smoothScroll(currentHeight, maxHeight) {{
-        window.scrollTo(0, currentHeight);
-        if ((direction === 'down' && currentHeight < maxHeight) || (direction === 'up' && currentHeight > 0)) {{
+    function smoothScroll(currentHeight, section) {{
+        if (section < sections) {{
+            window.scrollTo(0, currentHeight);
             setTimeout(function() {{
-                elapsedTime += delay;
-                var newHeight = window.pageYOffset;
                 if (direction === 'down') {{
-                    if (newHeight === currentHeight || newHeight >= maxHeight - window.innerHeight) {{
-                        smoothScroll(currentHeight + distance, maxHeight);
-                    }} else {{
-                        smoothScroll(newHeight, maxHeight);
-                    }}
+                    currentHeight += distance;
                 }} else {{
-                    if (newHeight === currentHeight || newHeight <= 0) {{
-                        smoothScroll(currentHeight - distance, maxHeight);
-                    }} else {{
-                        smoothScroll(newHeight, maxHeight);
-                    }}
+                    currentHeight -= distance;
                 }}
-            }}, delay);
-        }} else if (elapsedTime < totalTime) {{
-            setTimeout(function() {{
-                elapsedTime += delay;
-                smoothScroll(currentHeight, maxHeight);
-            }}, delay);
+                setTimeout(function() {{
+                    smoothScroll(currentHeight, section + 1);
+                }}, delay);
+            }}, pauseTime);
         }}
     }}
 
     var direction = '{direction}';
-    var maxHeight = document.body.scrollHeight;
     if (direction === 'down') {{
-        smoothScroll(0, maxHeight);
+        smoothScroll(0, 0);
     }} else {{
-        smoothScroll(maxHeight, maxHeight);
+        smoothScroll(totalHeight, 0);
     }}
     """
     browser.execute_script(scroll_script)
-    time.sleep(stay_time)
+    sections = browser.execute_script("return Math.ceil(document.body.scrollHeight / (window.innerHeight / 2));")
+    total_stay_time = sections * pause_time
+    time.sleep(total_stay_time)
 
-# Example usage:
 def scroll_page(browser):
-    scroll_page_smoothly(browser, direction='down', stay_time=10)
-    scroll_page_smoothly(browser, direction='up', stay_time=10)
+    scroll_page_smoothly(browser, direction='down', pause_time=1)
+    scroll_page_smoothly(browser, direction='up', pause_time=1)
+
 
 
 def fetch_all_urls(browser):
@@ -159,9 +167,9 @@ def fetch_ip_using_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
     browser = get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass)
     
     try:
-        site_url = "https://zabreezfirm.com"
+        site_url = "https://dailycombotoday.com"
         browser.get(site_url)
-        time.sleep(3)
+        time.sleep(1)
         scroll_page(browser)
         
         site_domain = urlparse(site_url).netloc
@@ -182,16 +190,23 @@ def fetch_ip_using_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
             visited_paths.add(path)  
             
             print(url)
+            
+            # Open the URL in a new tab
+            browser.execute_script("window.open('');")
+            browser.switch_to.window(browser.window_handles[-1])
             browser.get(url)
             time.sleep(1)
             scroll_page(browser)
             
             new_urls = fetch_all_urls(browser)
-            
             new_paths = {urlparse(url).path for url in new_urls if urlparse(url).netloc == site_domain}
             new_paths -= visited_paths
             
             urls_to_visit.extend(urljoin(site_url, path) for path in new_paths)
+            
+            # Close the tab and switch back to the original tab
+            # browser.close()
+            # browser.switch_to.window(browser.window_handles[0])
         
         all_urls = list(visited_paths)
     finally:
@@ -208,18 +223,7 @@ def parse_proxy_string(proxy_string):
     return proxy_host, proxy_port, proxy_user, proxy_pass
 
 proxy_strings = [
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-usjcupgngywww9mhst-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-us7h46zg6eaycxplsr-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-usrhhs6yfot28ulvmz-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-uslms48eewcqenrasc-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-uszfkpckiiwrbvkxjm-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-uske9ar644qhkv0n53-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-us82paol6f70o4xbi9-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-usjqvzxbxw44hg4zyp-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-us5lsnpk8xtzxoo90p-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-usm7574k3sgb2w6oxs-sesstime-90:0502422374bd",
-    "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-us2x2ju610a7vnpc1t-sesstime-90:0502422374bd",
-    # "na.dcnl7rw1.lunaproxy.net:12233:user-lu9597871-region-us-sessid-us2aij87zlyz6vz18h-sesstime-90:0502422374bd"
+"gw.dataimpulse.com:10000:ee9f710b8d0307f3ce1a__cr.us:6509bead40a27cc8",
 ]
 
 for proxy_string in proxy_strings:
