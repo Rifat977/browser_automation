@@ -113,7 +113,7 @@ def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
     chrome_options.add_argument(f'--proxy-server=https://{proxy_host}:{proxy_port}')
     
     # Headless mode options
-    chrome_options.add_argument('--head')
+    chrome_options.add_argument('--headless')
     chrome_options.add_argument('--disable-gpu')  # Disable GPU hardware acceleration
     chrome_options.add_argument('--no-sandbox')    # Bypass OS security model
     chrome_options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
