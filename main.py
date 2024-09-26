@@ -92,35 +92,35 @@ def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass, 
     
 #     return browser
 
-# def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
-#     # Initialize Chrome options
-#     chrome_options = uc.ChromeOptions()
-#     chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
-    
-#     # Create and add proxy auth extension
-#     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
-#     if plugin_path:
-#         chrome_options.add_extension(plugin_path)
-
-#     # Initialize undetected Chrome with the specified options
-#     service = Service(ChromeDriverManager().install())
-#     browser = uc.Chrome(service=service, options=chrome_options)
-    
-#     return browser
-
 def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
+    # Initialize Chrome options
     chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument(f'--proxy-server=https://{proxy_host}:{proxy_port}')
-
-    plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
-    chrome_options.add_extension(plugin_path)
-
-    chrome_driver_path = '/home/rifat/.wdm/drivers/chromedriver/linux64/127.0.6533.119/chromedriver-linux64/chromedriver'
-    service = Service(chrome_driver_path)
+    chrome_options.add_argument(f'--proxy-server=http://{proxy_host}:{proxy_port}')
     
+    # Create and add proxy auth extension
+    plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
+    if plugin_path:
+        chrome_options.add_extension(plugin_path)
+
+    # Initialize undetected Chrome with the specified options
+    service = Service(ChromeDriverManager().install())
     browser = webdriver.Chrome(service=service, options=chrome_options)
     
     return browser
+
+# def get_webdriver_with_proxy(proxy_host, proxy_port, proxy_user, proxy_pass):
+#     chrome_options = webdriver.ChromeOptions()
+#     chrome_options.add_argument(f'--proxy-server=https://{proxy_host}:{proxy_port}')
+
+#     plugin_path = create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
+#     chrome_options.add_extension(plugin_path)
+
+#     chrome_driver_path = '/home/rifat/.wdm/drivers/chromedriver/linux64/127.0.6533.119/chromedriver-linux64/chromedriver'
+#     service = Service(chrome_driver_path)
+    
+#     browser = webdriver.Chrome(service=service, options=chrome_options)
+    
+#     return browser
 
 
 def scroll_page_smoothly(browser, direction='down', pause_time=2):
